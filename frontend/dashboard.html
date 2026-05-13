@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blog Monitoring Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --border: #2a2d3e;
+      --primary: #6366f1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header { padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+    header h1 span { color: var(--primary); }
+    .refresh-info { color: var(--muted); font-size: 0.82rem; }
+    .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    /* Stat cards */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .stat-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 0.5rem; }
+    .stat-value { font-size: 2rem; font-weight: 700; }
+    .stat-value.green { color: var(--success); }
+    .stat-value.yellow { color: var(--warning); }
+    .stat-value.red { color: var(--danger); }
+    .stat-value.blue { color: var(--primary); }
+    .stat-sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+    /* Panels */
+    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    @media (max-width: 700px) { .panels { grid-template-columns: 1fr; } }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .panel h2 { font-size: 0.95rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 500; }
+    td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .code { font-family: monospace; font-size: 0.8rem; background: rgba(99,102,241,.15); color: var(--primary); padding: 1px 5px; border-radius: 3px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.72rem; font-weight: 600; }
+    .badge.ok { background: rgba(16,185,129,.2); color: var(--success); }
+    .badge.err { background: rgba(239,68,68,.2); color: var(--danger); }
+    .badge.warn { background: rgba(245,158,11,.2); color: var(--warning); }
+
+    /* Redis unavailable state */
+    .unavailable { text-align: center; padding: 2rem; color: var(--muted); }
+    .unavailable h3 { color: var(--warning); margin-bottom: 0.5rem; }
+
+    /* Health indicator */
+    .health-panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem; }
+    .health-icon { font-size: 2rem; }
+    .health-text h3 { font-size: 1rem; }
+    .health-text p { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+    #last-updated { color: var(--muted); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📊 <span>Blog</span> Monitoring Dashboard</h1>
+  <div class="refresh-info">
+    <span class="status-dot"></span>Auto-refreshes every 30s &nbsp;·&nbsp; <span id="last-updated">—</span>
+    &nbsp;&nbsp;<a href="/app" style="color:var(--primary);text-decoration:none;font-size:0.82rem">← Blog App</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- Health row -->
+  <div class="health-panel" id="health-panel">
+    <div class="health-icon" id="health-icon">⏳</div>
+    <div class="health-text">
+      <h3 id="health-title">Loading…</h3>
+      <p id="health-sub">Fetching metrics from the API</p>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Requests</div>
+      <div class="stat-value blue" id="stat-total">—</div>
+      <div class="stat-sub">since last restart</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Response Time</div>
+      <div class="stat-value green" id="stat-avg">—</div>
+      <div class="stat-sub">milliseconds</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Errors</div>
+      <div class="stat-value yellow" id="stat-errors">—</div>
+      <div class="stat-sub">4xx + 5xx responses</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Error Rate</div>
+      <div class="stat-value" id="stat-rate">—</div>
+      <div class="stat-sub">% of all requests</div>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  <div class="panels">
+    <!-- Endpoint breakdown chart -->
+    <div class="panel">
+      <h2>Top Endpoints</h2>
+      <canvas id="ep-chart" height="220"></canvas>
+    </div>
+
+    <!-- Error rate chart (history) -->
+    <div class="panel">
+      <h2>Endpoint Request Counts</h2>
+      <div class="table-wrap">
+        <table id="ep-table">
+          <thead><tr><th>Method + Path</th><th>Requests</th></tr></thead>
+          <tbody id="ep-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent errors table -->
+  <div class="panel">
+    <h2>Recent Errors (last 10)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Time</th><th>Method</th><th>Path</th><th>Status</th></tr></thead>
+        <tbody id="errors-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+let epChart = null;
+
+async function fetchMetrics() {
+  try {
+    const res = await fetch('/api/metrics');
+    const data = await res.json();
+    renderDashboard(data);
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById('health-title').textContent = 'API Unreachable';
+    document.getElementById('health-sub').textContent = e.message;
+    document.getElementById('health-icon').textContent = '🔴';
+  }
+}
+
+function renderDashboard(data) {
+  if (!data.available) {
+    document.getElementById('health-icon').textContent = '⚠️';
+    document.getElementById('health-title').textContent = 'Redis Not Connected';
+    document.getElementById('health-sub').textContent = 'Start Redis to enable metrics tracking. The API is still running normally.';
+    ['stat-total','stat-avg','stat-errors','stat-rate'].forEach(id => document.getElementById(id).textContent = 'N/A');
+    return;
+  }
+
+  // health
+  document.getElementById('health-icon').textContent = '✅';
+  document.getElementById('health-title').textContent = 'System Healthy';
+  document.getElementById('health-sub').textContent = 'API and Redis are both responding normally.';
+
+  // stats
+  document.getElementById('stat-total').textContent = data.total_requests.toLocaleString();
+  document.getElementById('stat-avg').textContent = data.avg_response_time_ms + ' ms';
+  document.getElementById('stat-errors').textContent = data.total_errors.toLocaleString();
+
+  const rate = data.error_rate_percent;
+  const rateEl = document.getElementById('stat-rate');
+  rateEl.textContent = rate + '%';
+  rateEl.className = 'stat-value ' + (rate < 5 ? 'green' : rate < 20 ? 'yellow' : 'red');
+
+  // endpoint table
+  const endpoints = Object.entries(data.endpoints || {}).sort((a, b) => b[1] - a[1]);
+  const tbody = document.getElementById('ep-tbody');
+  tbody.innerHTML = endpoints.length === 0
+    ? '<tr><td colspan="2" style="color:var(--muted)">No data yet</td></tr>'
+    : endpoints.slice(0, 15).map(([ep, count]) =>
+        `<tr><td><span class="code">${escHtml(ep)}</span></td><td>${count}</td></tr>`
+      ).join('');
+
+  // endpoint chart (top 8)
+  const top8 = endpoints.slice(0, 8);
+  const labels = top8.map(([ep]) => ep.replace('GET:', 'G:').replace('POST:', 'P:').replace('PUT:', 'U:').replace('DELETE:', 'D:'));
+  const values = top8.map(([, v]) => v);
+
+  if (epChart) {
+    epChart.data.labels = labels;
+    epChart.data.datasets[0].data = values;
+    epChart.update();
+  } else {
+    const ctx = document.getElementById('ep-chart').getContext('2d');
+    epChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Requests',
+          data: values,
+          backgroundColor: 'rgba(99,102,241,0.7)',
+          borderColor: 'rgba(99,102,241,1)',
+          borderWidth: 1,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#2a2d3e' } },
+          y: { ticks: { color: '#94a3b8' }, grid: { color: '#2a2d3e' }, beginAtZero: true },
+        },
+      },
+    });
+  }
+
+  // recent errors
+  const errTbody = document.getElementById('errors-tbody');
+  const errors = data.recent_errors || [];
+  errTbody.innerHTML = errors.length === 0
+    ? '<tr><td colspan="4" style="color:var(--muted)">No errors recorded 🎉</td></tr>'
+    : errors.map(e => {
+        const statusClass = e.status >= 500 ? 'err' : e.status >= 400 ? 'warn' : 'ok';
+        return `<tr>
+          <td style="color:var(--muted);font-size:0.8rem">${e.time}</td>
+          <td><span class="code">${escHtml(e.method)}</span></td>
+          <td style="font-size:0.82rem">${escHtml(e.path)}</td>
+          <td><span class="badge ${statusClass}">${e.status}</span></td>
+        </tr>`;
+      }).join('');
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// load on open and refresh every 30 seconds
+fetchMetrics();
+setInterval(fetchMetrics, 30000);
+</script>
+</body>
+</html>

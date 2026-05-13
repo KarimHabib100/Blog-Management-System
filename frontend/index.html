@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlogSpace</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --danger: #ef4444;
+      --success: #10b981;
+      --radius: 8px;
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+    /* ── Nav ── */
+    nav { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; }
+    .nav-brand { font-size: 1.3rem; font-weight: 700; color: var(--primary); text-decoration: none; }
+    .nav-links { display: flex; gap: 0.5rem; align-items: center; }
+    .nav-links button { background: none; border: none; cursor: pointer; padding: 6px 14px; border-radius: var(--radius); font-size: 0.9rem; color: var(--muted); transition: all .15s; }
+    .nav-links button:hover, .nav-links button.active { background: var(--bg); color: var(--primary); }
+    .btn { display: inline-block; padding: 8px 20px; border-radius: var(--radius); font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: var(--bg); }
+
+    /* ── Main layout ── */
+    main { max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Cards ── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
+    .card h2 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .card-meta { color: var(--muted); font-size: 0.82rem; margin-bottom: 0.75rem; }
+    .card-body { color: var(--text); white-space: pre-wrap; word-break: break-word; }
+    .card-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+
+    /* ── Forms ── */
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; color: var(--text); }
+    input, textarea, select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.95rem; background: var(--card); color: var(--text); outline: none; transition: border-color .15s; }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 120px; }
+    .form-row { display: flex; gap: 1rem; }
+    .form-row .form-group { flex: 1; }
+
+    /* ── Auth pages ── */
+    .auth-box { max-width: 420px; margin: 3rem auto; }
+    .auth-box h1 { font-size: 1.6rem; margin-bottom: 0.3rem; }
+    .auth-box p { color: var(--muted); margin-bottom: 1.5rem; }
+    .auth-toggle { text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--muted); }
+    .auth-toggle a { color: var(--primary); cursor: pointer; text-decoration: underline; }
+
+    /* ── Alerts ── */
+    .alert { padding: 10px 14px; border-radius: var(--radius); font-size: 0.9rem; margin-bottom: 1rem; display: none; }
+    .alert.show { display: block; }
+    .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+
+    /* ── Badge ── */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; }
+    .badge-admin { background: #ede9fe; color: #6d28d9; }
+    .badge-author { background: #dbeafe; color: #1d4ed8; }
+    .badge-reader { background: #f3f4f6; color: var(--muted); }
+
+    /* ── Comments ── */
+    .comment { border-left: 3px solid var(--border); padding: 0.75rem 1rem; margin: 0.5rem 0; background: var(--bg); border-radius: 0 var(--radius) var(--radius) 0; }
+    .comment.reply { margin-left: 1.5rem; border-left-color: var(--primary); }
+    .comment-author { font-weight: 600; font-size: 0.85rem; }
+    .comment-time { color: var(--muted); font-size: 0.78rem; margin-left: 6px; }
+    .comment-text { margin: 4px 0; font-size: 0.92rem; }
+    .reply-btn { background: none; border: none; color: var(--primary); font-size: 0.8rem; cursor: pointer; padding: 2px 0; }
+    .reply-form { margin-top: 0.5rem; display: none; }
+    .reply-form.open { display: block; }
+
+    /* ── Pagination ── */
+    .pagination { display: flex; justify-content: center; gap: 6px; margin-top: 1.5rem; }
+    .pagination button { padding: 6px 14px; border: 1px solid var(--border); background: var(--card); border-radius: var(--radius); cursor: pointer; font-size: 0.85rem; }
+    .pagination button.current { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .pagination button:hover:not(.current) { background: var(--bg); }
+
+    /* ── Header bar for pages ── */
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .page-header h1 { font-size: 1.5rem; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; color: var(--muted); padding: 3rem 0; }
+    .empty h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+
+    /* ── User info bar ── */
+    #user-bar { background: var(--primary); color: #fff; padding: 6px 2rem; font-size: 0.85rem; display: none; }
+    #user-bar.show { display: flex; justify-content: space-between; align-items: center; }
+
+    /* Spinner */
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- User bar shown when logged in -->
+<div id="user-bar">
+  <span id="user-info"></span>
+  <button class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.5)" onclick="logout()">Logout</button>
+</div>
+
+<!-- Navigation -->
+<nav>
+  <a class="nav-brand" href="#" onclick="showPage('posts')">✍️ BlogSpace</a>
+  <div class="nav-links">
+    <button onclick="showPage('posts')" id="nav-posts">Posts</button>
+    <button onclick="showPage('new-post')" id="nav-new-post" style="display:none">New Post</button>
+    <button onclick="showPage('login')" id="nav-login">Login</button>
+    <button onclick="showPage('register')" id="nav-register">Register</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ── Login page ── -->
+  <div class="page active" id="page-login">
+    <div class="auth-box">
+      <div class="card">
+        <h1>Welcome back</h1>
+        <p>Log in to your account</p>
+        <div class="alert alert-error" id="login-error"></div>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="login-username" placeholder="your_username" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" />
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Sign in</button>
+        <div class="auth-toggle">Don't have an account? <a onclick="showPage('register')">Register</a></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Register page ── -->
+  <div class="page" id="page-register">
+    <div class="auth-box">
+      <div class="card">
+        <h1>Create account</h1>
+        <p>Join BlogSpace today</p>
+        <div class="alert alert-error" id="register-error"></div>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="reg-username" placeholder="choose a username" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="reg-password" placeholder="at least 6 characters" />
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="reg-role">
+            <option value="reader">Reader — read and comment</option>
+            <option value="author">Author — write posts too</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="doRegister()">Create account</button>
+        <div class="auth-toggle">Already have an account? <a onclick="showPage('login')">Log in</a></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Posts list ── -->
+  <div class="page" id="page-posts">
+    <div class="page-header">
+      <h1>Recent Posts</h1>
+    </div>
+    <div id="posts-container"></div>
+    <div class="pagination" id="posts-pagination"></div>
+  </div>
+
+  <!-- ── Single post view ── -->
+  <div class="page" id="page-post">
+    <button class="btn btn-outline" style="margin-bottom:1rem" onclick="showPage('posts')">← Back</button>
+    <div id="post-detail"></div>
+    <div style="margin-top:2rem">
+      <h3 style="margin-bottom:1rem">Comments</h3>
+      <div id="new-comment-form" style="display:none;margin-bottom:1.5rem">
+        <div class="form-group">
+          <textarea id="new-comment-text" placeholder="Write a comment…" rows="3"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="submitComment()">Post Comment</button>
+      </div>
+      <div id="comments-container"></div>
+      <div class="pagination" id="comments-pagination"></div>
+    </div>
+  </div>
+
+  <!-- ── New / Edit post form ── -->
+  <div class="page" id="page-new-post">
+    <div class="page-header">
+      <h1 id="post-form-title">New Post</h1>
+    </div>
+    <div class="card">
+      <div class="alert alert-error" id="post-form-error"></div>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="post-title" placeholder="Post title" />
+      </div>
+      <div class="form-group">
+        <label>Content</label>
+        <textarea id="post-content" rows="10" placeholder="Write your post here…"></textarea>
+      </div>
+      <div style="display:flex;gap:0.5rem">
+        <button class="btn btn-primary" onclick="submitPost()">Publish</button>
+        <button class="btn btn-outline" onclick="showPage('posts')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = '';  // same origin
+let token = localStorage.getItem('token') || null;
+let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+let currentPostId = null;
+let editingPostId = null;
+let postsPage = 1;
+let commentsPage = 1;
+
+// ── Auth helpers ───────────────────────────────────────────────────────────────
+
+function authHeaders() {
+  return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+}
+
+async function fetchMe() {
+  if (!token) return;
+  const res = await fetch(`${API}/users/me`, { headers: authHeaders() });
+  if (res.ok) {
+    currentUser = await res.json();
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    updateNavForUser();
+  }
+}
+
+function updateNavForUser() {
+  const loggedIn = !!token;
+  document.getElementById('nav-login').style.display = loggedIn ? 'none' : '';
+  document.getElementById('nav-register').style.display = loggedIn ? 'none' : '';
+  document.getElementById('nav-new-post').style.display = (loggedIn && currentUser && currentUser.role !== 'reader') ? '' : 'none';
+
+  const bar = document.getElementById('user-bar');
+  if (loggedIn && currentUser) {
+    bar.classList.add('show');
+    const badge = `<span class="badge badge-${currentUser.role}">${currentUser.role}</span>`;
+    document.getElementById('user-info').innerHTML = `👤 ${currentUser.username} ${badge}`;
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.classList.remove('show');
+
+  const form = new URLSearchParams({ username, password });
+  const res = await fetch(`${API}/auth/login`, { method: 'POST', body: form });
+  const data = await res.json();
+
+  if (!res.ok) {
+    errEl.textContent = data.detail || 'Login failed';
+    errEl.classList.add('show');
+    return;
+  }
+
+  token = data.access_token;
+  localStorage.setItem('token', token);
+  await fetchMe();
+  showPage('posts');
+}
+
+async function doRegister() {
+  const errEl = document.getElementById('register-error');
+  errEl.classList.remove('show');
+
+  const body = {
+    username: document.getElementById('reg-username').value.trim(),
+    email: document.getElementById('reg-email').value.trim(),
+    password: document.getElementById('reg-password').value,
+    role: document.getElementById('reg-role').value,
+  };
+
+  const res = await fetch(`${API}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    errEl.textContent = data.detail || 'Registration failed';
+    errEl.classList.add('show');
+    return;
+  }
+
+  // auto-login after registration
+  const form = new URLSearchParams({ username: body.username, password: body.password });
+  const loginRes = await fetch(`${API}/auth/login`, { method: 'POST', body: form });
+  const loginData = await loginRes.json();
+  token = loginData.access_token;
+  localStorage.setItem('token', token);
+  await fetchMe();
+  showPage('posts');
+}
+
+function logout() {
+  token = null;
+  currentUser = null;
+  localStorage.removeItem('token');
+  localStorage.removeItem('currentUser');
+  updateNavForUser();
+  showPage('posts');
+}
+
+// ── Page routing ───────────────────────────────────────────────────────────────
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+
+  const page = document.getElementById(`page-${name}`);
+  if (page) page.classList.add('active');
+
+  const btn = document.getElementById(`nav-${name}`);
+  if (btn) btn.classList.add('active');
+
+  if (name === 'posts') { postsPage = 1; loadPosts(); }
+  if (name === 'new-post') { editingPostId = null; resetPostForm(); }
+}
+
+// ── Posts ──────────────────────────────────────────────────────────────────────
+
+async function loadPosts(page = 1) {
+  postsPage = page;
+  const res = await fetch(`${API}/posts/?page=${page}&per_page=6`);
+  const data = await res.json();
+  renderPosts(data);
+}
+
+function renderPosts(data) {
+  const container = document.getElementById('posts-container');
+  if (!data.posts || data.posts.length === 0) {
+    container.innerHTML = `<div class="empty"><h3>No posts yet</h3><p>Be the first to write something!</p></div>`;
+    document.getElementById('posts-pagination').innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = data.posts.map(post => `
+    <div class="card">
+      <h2><a href="#" style="color:var(--primary);text-decoration:none" onclick="loadPost(${post.id})">${escHtml(post.title)}</a></h2>
+      <div class="card-meta">By ${escHtml(post.author.username)} · ${fmtDate(post.created_at)}</div>
+      <div class="card-body">${escHtml(post.content.substring(0, 180))}${post.content.length > 180 ? '…' : ''}</div>
+      <div class="card-actions">
+        <button class="btn btn-outline" onclick="loadPost(${post.id})">Read more</button>
+        ${canEdit(post) ? `<button class="btn btn-outline" onclick="editPost(${post.id})">Edit</button>` : ''}
+        ${canDelete(post) ? `<button class="btn btn-danger" onclick="deletePost(${post.id})">Delete</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  // pagination
+  const totalPages = Math.ceil(data.total / data.per_page);
+  let pag = '';
+  if (postsPage > 1) pag += `<button onclick="loadPosts(${postsPage - 1})">‹ Prev</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    pag += `<button class="${i === postsPage ? 'current' : ''}" onclick="loadPosts(${i})">${i}</button>`;
+  }
+  if (postsPage < totalPages) pag += `<button onclick="loadPosts(${postsPage + 1})">Next ›</button>`;
+  document.getElementById('posts-pagination').innerHTML = pag;
+}
+
+async function loadPost(id) {
+  currentPostId = id;
+  commentsPage = 1;
+  const res = await fetch(`${API}/posts/${id}`);
+  const post = await res.json();
+  renderPostDetail(post);
+  await loadComments(id, 1);
+  showPage('post');
+}
+
+function renderPostDetail(post) {
+  const canE = canEdit(post);
+  const canD = canDelete(post);
+  document.getElementById('post-detail').innerHTML = `
+    <div class="card">
+      <h2 style="font-size:1.5rem">${escHtml(post.title)}</h2>
+      <div class="card-meta">
+        By <strong>${escHtml(post.author.username)}</strong>
+        <span class="badge badge-${post.author.role}">${post.author.role}</span>
+        · ${fmtDate(post.created_at)}
+        ${post.updated_at ? `· <em>edited ${fmtDate(post.updated_at)}</em>` : ''}
+      </div>
+      <div class="card-body" style="font-size:1rem;line-height:1.8">${escHtml(post.content)}</div>
+      <div class="card-actions">
+        ${canE ? `<button class="btn btn-outline" onclick="editPost(${post.id})">Edit</button>` : ''}
+        ${canD ? `<button class="btn btn-danger" onclick="deletePost(${post.id})">Delete</button>` : ''}
+      </div>
+    </div>`;
+
+  const commentBox = document.getElementById('new-comment-form');
+  commentBox.style.display = token ? 'block' : 'none';
+}
+
+async function loadComments(postId, page = 1) {
+  commentsPage = page;
+  const res = await fetch(`${API}/posts/${postId}/comments/?page=${page}&per_page=10`);
+  const data = await res.json();
+  renderComments(data, postId);
+}
+
+function renderComments(data, postId) {
+  const container = document.getElementById('comments-container');
+  if (!data.comments || data.comments.length === 0) {
+    container.innerHTML = `<p style="color:var(--muted);font-size:0.9rem">No comments yet. Be the first!</p>`;
+    document.getElementById('comments-pagination').innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = data.comments.map(c => renderComment(c, postId)).join('');
+
+  const totalPages = Math.ceil(data.total / data.per_page);
+  let pag = '';
+  if (commentsPage > 1) pag += `<button onclick="loadComments(${postId},${commentsPage-1})">‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    pag += `<button class="${i === commentsPage ? 'current' : ''}" onclick="loadComments(${postId},${i})">${i}</button>`;
+  }
+  if (commentsPage < totalPages) pag += `<button onclick="loadComments(${postId},${commentsPage+1})">›</button>`;
+  document.getElementById('comments-pagination').innerHTML = pag;
+}
+
+function renderComment(c, postId, isReply = false) {
+  const isOwn = currentUser && currentUser.id === c.author_id;
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  return `
+    <div class="comment ${isReply ? 'reply' : ''}">
+      <div>
+        <span class="comment-author">${escHtml(c.author.username)}</span>
+        <span class="comment-time">${fmtDate(c.created_at)}</span>
+      </div>
+      <div class="comment-text">${escHtml(c.content)}</div>
+      <div style="display:flex;gap:0.5rem;align-items:center;margin-top:4px">
+        ${token && !isReply ? `<button class="reply-btn" onclick="toggleReply(${c.id})">↩ Reply</button>` : ''}
+        ${(isOwn || isAdmin) ? `<button class="reply-btn" style="color:var(--danger)" onclick="deleteComment(${postId},${c.id})">Delete</button>` : ''}
+      </div>
+      ${!isReply ? `
+      <div class="reply-form" id="reply-form-${c.id}">
+        <textarea id="reply-text-${c.id}" rows="2" placeholder="Write a reply…" style="margin-bottom:6px"></textarea>
+        <button class="btn btn-primary" style="font-size:0.8rem;padding:5px 12px" onclick="submitReply(${postId},${c.id})">Reply</button>
+        <button class="btn btn-outline" style="font-size:0.8rem;padding:5px 12px" onclick="toggleReply(${c.id})">Cancel</button>
+      </div>` : ''}
+      ${c.replies && c.replies.length > 0 ? c.replies.map(r => renderComment(r, postId, true)).join('') : ''}
+    </div>`;
+}
+
+function toggleReply(commentId) {
+  const form = document.getElementById(`reply-form-${commentId}`);
+  form.classList.toggle('open');
+}
+
+async function submitComment() {
+  const text = document.getElementById('new-comment-text').value.trim();
+  if (!text) return;
+
+  await fetch(`${API}/posts/${currentPostId}/comments/`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ content: text }),
+  });
+
+  document.getElementById('new-comment-text').value = '';
+  await loadComments(currentPostId, commentsPage);
+}
+
+async function submitReply(postId, parentId) {
+  const text = document.getElementById(`reply-text-${parentId}`).value.trim();
+  if (!text) return;
+
+  await fetch(`${API}/posts/${postId}/comments/`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ content: text, parent_id: parentId }),
+  });
+
+  toggleReply(parentId);
+  await loadComments(postId, commentsPage);
+}
+
+async function deleteComment(postId, commentId) {
+  if (!confirm('Delete this comment?')) return;
+  await fetch(`${API}/posts/${postId}/comments/${commentId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  await loadComments(postId, commentsPage);
+}
+
+// ── Post form ──────────────────────────────────────────────────────────────────
+
+function resetPostForm() {
+  document.getElementById('post-form-title').textContent = 'New Post';
+  document.getElementById('post-title').value = '';
+  document.getElementById('post-content').value = '';
+  document.getElementById('post-form-error').classList.remove('show');
+}
+
+async function editPost(id) {
+  editingPostId = id;
+  const res = await fetch(`${API}/posts/${id}`);
+  const post = await res.json();
+  document.getElementById('post-form-title').textContent = 'Edit Post';
+  document.getElementById('post-title').value = post.title;
+  document.getElementById('post-content').value = post.content;
+  showPage('new-post');
+}
+
+async function submitPost() {
+  const errEl = document.getElementById('post-form-error');
+  errEl.classList.remove('show');
+
+  const title = document.getElementById('post-title').value.trim();
+  const content = document.getElementById('post-content').value.trim();
+  if (!title || !content) { errEl.textContent = 'Title and content are required'; errEl.classList.add('show'); return; }
+
+  const url = editingPostId ? `${API}/posts/${editingPostId}` : `${API}/posts/`;
+  const method = editingPostId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
+    headers: authHeaders(),
+    body: JSON.stringify({ title, content }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    errEl.textContent = data.detail || 'Failed to save post';
+    errEl.classList.add('show');
+    return;
+  }
+
+  editingPostId = null;
+  showPage('posts');
+}
+
+async function deletePost(id) {
+  if (!confirm('Delete this post?')) return;
+  await fetch(`${API}/posts/${id}`, { method: 'DELETE', headers: authHeaders() });
+  showPage('posts');
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function canEdit(post) {
+  return currentUser && (currentUser.id === post.author_id || currentUser.role === 'admin');
+}
+
+function canDelete(post) {
+  return currentUser && (currentUser.id === post.author_id || currentUser.role === 'admin');
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+
+(async () => {
+  await fetchMe();
+  updateNavForUser();
+  if (token) {
+    showPage('posts');
+  } else {
+    showPage('login');
+  }
+})();
+</script>
+</body>
+</html>
